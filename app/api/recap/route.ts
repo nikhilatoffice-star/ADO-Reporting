@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchOData } from '@/lib/ado-client';
 import { generateSprintRecap } from '@/lib/ai-summary';

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { fetchOData, isDemoMode } from '@/lib/ado-client';
 import { TEAM_MEMBERS } from '@/lib/team-config';
