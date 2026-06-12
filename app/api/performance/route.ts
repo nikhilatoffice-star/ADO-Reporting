@@ -77,9 +77,8 @@ export async function GET(request: Request) {
     while (keepFetching) {
       const { data } = await supabase
         .from('ado_work_items')
-        .select('*')
-        .in('work_item_type', ['Task'])
-        .ilike('iteration_name', '%Sprint%')
+        .select('work_item_id, title, work_item_type, state, assigned_to, iteration_name, team_name, story_points, parent_work_item_id, tags')
+        .in('work_item_type', ['Task', 'Bug', 'User Story'])
         .order('work_item_id', { ascending: false })
         .range(fetchStart, fetchStart + fetchStep - 1);
 
@@ -107,23 +106,25 @@ export async function GET(request: Request) {
       if (maxAnchorDate === 0) maxAnchorDate = new Date('2099-01-01').getTime();
     }
     
-    // Apply exact filtering
+    // Apply exact filtering — no tag requirement for performance table
+    // Tags (Packaged/Rel) are only relevant on the Sprint Detail ticket table
     const validWorkItems = (dbWorkItems || []).filter(item => {
       const state = (item.state || '').toLowerCase();
       const isCompleted = ['closed', 'ready for prod', 'resolved', 'done', 'completed'].includes(state);
       if (!isCompleted) return false;
 
-      const tagsList = (item.tags || '').split(',').map((s: string) => s.trim().toLowerCase());
-      const hasValidTag = tagsList.some((tag: string) => tag === 'packaged' || tag.startsWith('rel'));
-      if (!hasValidTag) return false;
-
       const iterName = item.iteration_name || '';
       const teamName = item.team_name || '';
+
+      // Must belong to one of the four tracked teams/streams
       const isCRM = teamName.includes('CRM') || iterName.includes('CRM');
       const isBF = teamName.includes('BreakFix') || iterName.includes('eComBF') || teamName.includes('Break Fix');
       const isFind = teamName.includes('Findability') || iterName.includes('eComFindability');
       const isEnh = teamName.includes('Enhancement') || iterName.includes('eComEnh') || teamName.includes('Projects');
       if (!(isCRM || isBF || isFind || isEnh)) return false;
+
+      // Must be in a sprint iteration (not INT- or non-sprint iterations)
+      if (!iterName.match(/Sprint/i)) return false;
 
       // Must be <= anchor date
       const eDate = iterToDate.get(iterName);
